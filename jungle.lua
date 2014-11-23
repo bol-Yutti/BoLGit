@@ -19,7 +19,7 @@ function OnLoad()
 for i = 1, heroManager.iCount do
  local hero = heroManager:getHero(i)
  if hero ~= nil and hero.team ~= player.team then
-   if hero:GetSpellData(SUMMONER_1).name:find("smite") or hero:GetSpellData(SUMMONER_2).name:find("smite") then
+   if hero:GetSpellData(SUMMONER_1).name:lower():find("smite") or hero:GetSpellData(SUMMONER_2).name:lower():find("smite") then
       EnemyJungler = hero
    
     end
