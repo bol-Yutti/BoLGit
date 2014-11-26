@@ -3,7 +3,7 @@ _G.Kalista_Version = 1.00
 
 	Kite Machine Kalista by Ralphlol 
 	
-	Version 0.9992 Updated 11/26/2014
+	Version 1.00 Updated 11/26/2014
 	
 	Default Settings Highly Recommended
 	
