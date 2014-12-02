@@ -2,7 +2,7 @@
 
 
 require "MapPosition"
-if (GetGame().map.index ~= 1) then return end
+--if (GetGame().map.index ~= 1) then return end
 -- Code ------------------------------------------------------------------------
 local EnemyJungler = nil
 local lasttime = 0
