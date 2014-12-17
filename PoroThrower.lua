@@ -2,7 +2,7 @@ require 'VPrediction'
 
 lastCast = 0
 function OnLoad()
-	PrintChat("<font color=\"#FFFFFF\">Poro Thrower Helper Version Two Loaded ")
+	PrintChat("<font color=\"#FFFFFF\">Poro Thrower Helper Version Three Loaded ")
 	poro = poroSlot()
 	PoroMenu = scriptConfig("Poro Menu", "poro")
 	PoroMenu:addParam("comboKey", "Shoot Poro", SCRIPT_PARAM_ONKEYDOWN, false, 32) 
@@ -66,11 +66,36 @@ function shootPoro(unit)
 	if lastCast > os.clock() - 10 then return end
 	
 	if  ValidTarget(unit, PoroMenu.range + 50) and poroRdy then
-		local CastPosition, Hitchance, Position = vPred:GetLineCastPosition(Target, .25, 75, PoroMenu.range, 1600, myHero, true)
+		local CastPosition, Hitchance, Position = vPred:GetLineCastPosition(Target, .25, 75, PoroMenu.range, 1200, myHero, true)
 		if CastPosition and Hitchance >= 2 then
+			local CastPosition = pPrediction(unit, 1200, 0.25)
 			CastSpell(poro, CastPosition.x, CastPosition.z)
 			lastCast = os.clock()
 		end
 	end
 end
 				
+function pPrediction(unit, speed, delay) --PewPewPew Prediction
+ if unit == nil then return end
+ local pathPot = (unit.ms*(GetDistance(unit.pos)/speed))+ delay
+ local pathSum = 0
+ local pathHit = nil
+ local pathPoints = unit.path
+ for i=1, unit.pathCount do
+  local pathEnd = unit:GetPath(i)
+  if pathEnd then
+   if unit:GetPath(i-1) then
+    local iPathDist = GetDistance(unit:GetPath(i-1), pathEnd)
+    pathSum = pathSum + iPathDist
+    if pathSum > pathPot and pathHit == nil then
+     pathHit = unit:GetPath(i)
+     local l = (pathPot-(pathSum-iPathDist))
+     local v = Vector(unit:GetPath(i-1)) + (Vector(unit:GetPath(i))-Vector(unit:GetPath(i-1))):normalized()*l
+     --predDebug = v
+     return v
+    end
+   end
+  end
+ end
+ return unit.pos
+end
