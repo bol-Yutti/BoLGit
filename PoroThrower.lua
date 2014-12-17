@@ -2,7 +2,7 @@ require 'VPrediction'
 
 lastCast = 0
 function OnLoad()
-	PrintChat("<font color=\"#FFFFFF\">Poro Thrower Helper Version One Loaded ")
+	PrintChat("<font color=\"#FFFFFF\">Poro Thrower Helper Version Two Loaded ")
 	poro = poroSlot()
 	PoroMenu = scriptConfig("Poro Menu", "poro")
 	PoroMenu:addParam("comboKey", "Shoot Poro", SCRIPT_PARAM_ONKEYDOWN, false, 32) 
@@ -13,6 +13,7 @@ function OnLoad()
 end
 
 function OnTick()
+--print(myHero:GetSpellData(SUMMONER_1).name)
 	Target = getTarget()
 	if (poro ~= nil) and (myHero:CanUseSpell(poro) == READY) then 
 		poroRdy = true
@@ -27,6 +28,9 @@ end
 function OnDraw()
 	if not myHero.dead then
 		DrawCircle3D(myHero.x, myHero.y, myHero.z, PoroMenu.range, 2, ARGB(255, 0, 0, 255))
+	end
+	if hit() then
+		DrawText3D("Poro Target Hit!", myHero.x +95, myHero.y + 305, myHero.z+33, 40, RGB(255, 69, 111), true)
 	end
 end
 function getTarget()
@@ -48,8 +52,18 @@ function poroSlot()
 	end
 end
 
+function hit()
+	if myHero:GetSpellData(SUMMONER_1).name:find("porothrowfollowupcast") then
+		return true
+	elseif myHero:GetSpellData(SUMMONER_2).name:find("porothrowfollowupcast") then
+		return true
+	else
+		return false
+	end
+end
+
 function shootPoro(unit)
-	if lastCast > os.clock() - 8 then return end
+	if lastCast > os.clock() - 10 then return end
 	
 	if  ValidTarget(unit, PoroMenu.range + 50) and poroRdy then
 		local CastPosition, Hitchance, Position = vPred:GetLineCastPosition(Target, .25, 75, PoroMenu.range, 1600, myHero, true)
