@@ -1,4 +1,4 @@
-local version = "1.1"
+local version = "1.11"
 local TESTVERSION = false
 local AUTOUPDATE = true
 local UPDATE_HOST = "raw.github.com"
@@ -676,7 +676,7 @@ function VPrediction:GetBestCastPosition(unit, delay, radius, range, speed, from
 
 	if ValidTarget(unit) and unit.endPath then                                                         ----TEMP FIX
 		local pathPot = (unit.ms*(GetDistance(unit.pos)/speed))+ delay 
-		local v = Vector(unit) + (Vector(unit.endPath)-Vector(unit)):normalized()*(pathPot*1.0)
+		local v = Vector(unit) + (Vector(unit.endPath)-Vector(unit)):normalized()*(pathPot*1.2)
 		if GetDistance(unit, v) > 1 and GetDistance(unit.endPath,unit) > GetDistance(unit, v) then
 			return v, HitChance, Position
 		end
