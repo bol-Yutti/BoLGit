@@ -1,4 +1,4 @@
-local version = "1.2"
+local version = "1.3"
 local TESTVERSION = false
 local AUTOUPDATE = true
 local UPDATE_HOST = "raw.github.com"
@@ -501,28 +501,36 @@ function VPrediction:CalculateTargetPosition(unit, delay, radius, speed, from, s
 		CastPosition = Position
 	end]]
 	if ValidTarget(unit) and unit.endPath or unit == myHero then  	----TEMP FIX
+		local pathPot = (unit.ms*((GetDistance(myHero.pos, unit.pos)/speed)+delay))
 		if unit.pathCount < 3 then
-			local pathPot = (unit.ms*((GetDistance(myHero.pos, unit.pos)/speed)+delay))
 			local v = Vector(unit) + (Vector(unit.endPath)-Vector(unit)):normalized()*(pathPot)
-			if GetDistance(unit, v) > 1 then
+			if GetDistance(unit, v) > GetDistance(unit, unit.endPath) then
+				return v, 0, v
+			elseif GetDistance(unit, v) > 1 then
 				if GetDistance(unit.endPath, unit) > GetDistance(unit, v) then
 					return v, 2, v
 				else
 					return v, 0, v
 				end
 			end
+			return Vector(unit), 2, Vector(unit)
 		else
-			local pathPot = (unit.ms*((GetDistance(myHero.pos, unit.pos)/speed)+delay))
-			for i=1, unit.pathCount do
-				local pathEnd = unit:GetPath(i)
-				if pathEnd then
-					if unit:GetPath(i-1) then
-						local iPathDist = GetDistance(unit:GetPath(i-1), pathEnd)
+			for i = unit.pathIndex, unit.pathCount do
+				if unit:GetPath(i) and unit:GetPath(i-1) then
+					local pStart, pEnd = unit:GetPath(i-1), unit:GetPath(i) 
+					local iPathDist = GetDistance(pStart, pEnd) 
+					if unit:GetPath(unit.pathIndex  - 1) then
 						if pathPot > iPathDist then
 							pathPot = pathPot-iPathDist
-						else
-							local v = Vector(unit:GetPath(i-1)) + (Vector(unit:GetPath(i))-Vector(unit:GetPath(i-1))):normalized()*pathPot
-							return v, 2, v
+						elseif (pathPot + GetDistance(unit, unit:GetPath(unit.pathIndex  - 1))) > iPathDist then
+							pathPot = (pathPot + GetDistance(unit, unit:GetPath(unit.pathIndex  - 1))) - iPathDist
+						else 
+							if pathPot < iPathDist then
+								local v = Vector(pStart) + (Vector(pEnd)-Vector(pStart)):normalized()*(pathPot + GetDistance(unit, unit:GetPath(unit.pathIndex  - 1)))
+								return v, 2, v
+							else
+								return v, 0, v
+							end
 						end
 					end
 				end
@@ -532,7 +540,6 @@ function VPrediction:CalculateTargetPosition(unit, delay, radius, speed, from, s
 			return v, 0, v
 		end
 	end
-	return Vector(unit), 2, Vector(unit)
 end
 
 function VPrediction:MaxAngle(unit, currentwaypoint, from)
