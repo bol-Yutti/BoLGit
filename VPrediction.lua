@@ -1,28 +1,12 @@
-local version = "1.3"
-local TESTVERSION = false
-local AUTOUPDATE = true
-local UPDATE_HOST = "raw.github.com"
-local UPDATE_PATH = "/Ralphlol/BoLGit/master/VPrediction.lua".."?rand="..math.random(1,10000)
-local UPDATE_FILE_PATH = LIB_PATH.."vPrediction.lua"
-local UPDATE_URL = "https://"..UPDATE_HOST..UPDATE_PATH
-
-local function AutoupdaterMsg(msg) print("<font color=\"#6699ff\"><b>VPrediction TEMP FIX:</b></font> <font color=\"#FFFFFF\">"..msg..".</font>") end
-if AUTOUPDATE then
-	local ServerData = GetWebResult(UPDATE_HOST, "/Ralphlol/BoLGit/master/VPrediction.version")
-	if ServerData then
-		ServerVersion = type(tonumber(ServerData)) == "number" and tonumber(ServerData) or nil
-		if ServerVersion then
-			if tonumber(version) < ServerVersion then
-				AutoupdaterMsg("New version available"..ServerVersion)
-				AutoupdaterMsg("Updating, please don't press F9")
-				DelayAction(function() DownloadFile(UPDATE_URL, UPDATE_FILE_PATH, function () AutoupdaterMsg("Successfully updated. ("..version.." => "..ServerVersion.."), press F9 twice to load the updated version.") end) end, 3)
-			else
-				AutoupdaterMsg("You have got the latest version ("..ServerVersion..")")
-			end
-		end
-	else
-		AutoupdaterMsg("Error downloading version info")
-	end
+function OnLoad()
+    ScriptUpdate(1.31,
+        '/Ralphlol/BoLGit/master/VPrediction.version',
+        '/Ralphlol/BoLGit/master/VPrediction.lua',
+        LIB_PATH .. 'VPrediction.lua',
+        '<font color=\"#6699ff\"><b>VPrediction TEMP FIX:</b></font> <font color=\"#FFFFFF\">You have got the latest version</font>',
+        '<font color=\"#6699ff\"><b>VPrediction TEMP FIX:</b></font> <font color=\"#FFFFFF\">New version available, updating...</font>',
+        '<font color=\"#6699ff\"><b>VPrediction TEMP FIX:</b></font> <font color=\"#FFFFFF\">Successfully updated, press F9 twice to load the updated version</font>'
+    )
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1336,3 +1320,82 @@ function VPrediction:CalcDamageOfAttack(source, target, spell, additionalDamage)
 	return damageMultiplier * totalDamage
 end
 --}
+
+class "ScriptUpdate"
+function ScriptUpdate:__init(LocalVersion, VersionPath, ScriptPath, SavePath, NoNewVer, NewVer, UpdateDone)
+    self.NewVer = NewVer
+    self.NoNewVer = NoNewVer
+    self.UpdateDone = UpdateDone
+    self.LocalVersion = LocalVersion
+    self.VersionPath = VersionPath
+    self.ScriptPath = ScriptPath
+    self.SavePath = SavePath
+    self.LuaSocket = require("socket")
+
+    self.VersionSocket = self.LuaSocket.connect("cdn.rawgit.com", 80)
+    self.VersionSocket:send("GET "..self.VersionPath.."?rand="..math.random(99999999).." HTTP/1.0\r\nHost: cdn.rawgit.com\r\n\r\n")
+    self.VersionSocket:settimeout(0, 'b')
+    self.VersionSocket:settimeout(99999999, 't')
+    self.LastPrint = ""
+    self.File = ""
+    AddTickCallback(function() self:GetOnlineVersion() end)
+end
+
+function ScriptUpdate:GetOnlineVersion()
+    if self.VersionStatus == 'closed' then return end
+    self.VersionReceive, self.VersionStatus, self.Snipped = self.VersionSocket:receive(1024)
+
+    if self.VersionReceive then
+        if self.LastPrint ~= self.VersionReceive then
+            self.LastPrint = self.VersionReceive
+            self.File = self.File .. self.VersionReceive
+        end
+    end
+
+    if self.Snipped ~= "" and self.Snipped then
+        self.File = self.File .. self.Snipped
+    end
+    if self.VersionStatus == 'closed' then
+        local Find = string.find(self.File, 'X-Cache: HIT')
+        self.OnlineVersion = tonumber(string.sub(self.File, Find + 14))
+        if self.OnlineVersion > self.LocalVersion then
+            self.ScriptSocket = self.LuaSocket.connect("cdn.rawgit.com", 80)
+            self.ScriptSocket:send("GET "..self.ScriptPath.."?rand="..math.random(99999999).." HTTP/1.0\r\nHost: cdn.rawgit.com\r\n\r\n")
+            self.ScriptSocket:settimeout(0, 'b')
+            self.ScriptSocket:settimeout(99999999, 't')
+            self.LastPrint = ""
+            self.File = ""
+            if self.NewVer then print(self.NewVer) end
+            AddTickCallback(function() self:DownloadUpdate() end)
+        else
+            if self.NoNewVer then print(self.NoNewVer) end
+        end
+    end
+
+end
+
+function ScriptUpdate:DownloadUpdate()
+    if self.ScriptStatus == 'closed' then return end
+    self.ScriptReceive, self.ScriptStatus, self.Snipped = self.ScriptSocket:receive(1024)
+
+    if self.ScriptReceive then
+        if self.LastPrint ~= self.ScriptReceive then
+            self.LastPrint = self.ScriptReceive
+            self.File = self.File .. self.ScriptReceive
+        end
+    end
+
+    if self.Snipped ~= "" and self.Snipped then
+        self.File = self.File .. self.Snipped
+    end
+
+    if self.ScriptStatus == 'closed' then
+        local Find = string.find(self.File, 'X-Cache: HIT')
+        self.ScriptFile = string.sub(self.File, Find + 14)
+        local file = io.open(self.SavePath, "w+")
+        file:write(self.ScriptFile)
+        file:flush()
+        file:close()
+        if self.UpdateDone then print(self.UpdateDone) end
+    end
+end
