@@ -1,12 +1,15 @@
 function OnLoad()
-    ScriptUpdate(1.31,
-        '/Ralphlol/BoLGit/master/VPrediction.version',
-        '/Ralphlol/BoLGit/master/VPrediction.lua',
-        LIB_PATH .. 'VPrediction.lua',
-        '<font color=\"#6699ff\"><b>VPrediction TEMP FIX:</b></font> <font color=\"#FFFFFF\">You have got the latest version</font>',
-        '<font color=\"#6699ff\"><b>VPrediction TEMP FIX:</b></font> <font color=\"#FFFFFF\">New version available, updating...</font>',
-        '<font color=\"#6699ff\"><b>VPrediction TEMP FIX:</b></font> <font color=\"#FFFFFF\">Successfully updated, press F9 twice to load the updated version</font>'
-    )
+    if not UpdateInit then
+        UpdateInit = true
+        ScriptUpdate(1.32,
+            '/Ralphlol/BoLGit/master/VPrediction.version',
+            '/Ralphlol/BoLGit/master/VPrediction.lua',
+            LIB_PATH .. 'VPrediction.lua',
+            '<font color=\"#6699ff\"><b>VPrediction TEMP FIX:</b></font> <font color=\"#FFFFFF\">You have got the latest version</font>',
+            '<font color=\"#6699ff\"><b>VPrediction TEMP FIX:</b></font> <font color=\"#FFFFFF\">New version available, updating...</font>',
+            '<font color=\"#6699ff\"><b>VPrediction TEMP FIX:</b></font> <font color=\"#FFFFFF\">Successfully updated, press F9 twice to load the updated version</font>'
+        )
+    end
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1357,7 +1360,11 @@ function ScriptUpdate:GetOnlineVersion()
     end
     if self.VersionStatus == 'closed' then
         local Find = string.find(self.File, 'X-Cache: HIT')
-        self.OnlineVersion = tonumber(string.sub(self.File, Find + 14))
+        if not Find then
+            self.OnlineVersion = 0
+        else
+            self.OnlineVersion = tonumber(string.sub(self.File, Find + 14))
+        end
         if self.OnlineVersion > self.LocalVersion then
             self.ScriptSocket = self.LuaSocket.connect("cdn.rawgit.com", 80)
             self.ScriptSocket:send("GET "..self.ScriptPath.."?rand="..math.random(99999999).." HTTP/1.0\r\nHost: cdn.rawgit.com\r\n\r\n")
@@ -1371,7 +1378,6 @@ function ScriptUpdate:GetOnlineVersion()
             if self.NoNewVer then print(self.NoNewVer) end
         end
     end
-
 end
 
 function ScriptUpdate:DownloadUpdate()
@@ -1391,6 +1397,7 @@ function ScriptUpdate:DownloadUpdate()
 
     if self.ScriptStatus == 'closed' then
         local Find = string.find(self.File, 'X-Cache: HIT')
+        if not Find then return end
         self.ScriptFile = string.sub(self.File, Find + 14)
         local file = io.open(self.SavePath, "w+")
         file:write(self.ScriptFile)
