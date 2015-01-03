@@ -1,4 +1,4 @@
-_G.Model_Version = 1.1
+_G.Model_Version = 1.2
 _G.Model_Autoupdate = true
 timeran = os.clock()
 local script_downloadName = "Model Changer"
@@ -167,27 +167,24 @@ function OnTick()
 		end
 	end
 end
-
-function MakeModel(champ) --credits to shalzuth
-	p = CLoLPacket(0x97)
+function MakeModel(modelName) --Credits to Shalzuth
+	local p = CLoLPacket(0x001A)
+	p.vTable = 19025968
+	
 	p:EncodeF(myHero.networkID)
-	p.pos = 1
-	t1 = p:Decode1()
-	t2 = p:Decode1()
-	t3 = p:Decode1()
-	t4 = p:Decode1()
-	p:Encode1(t1)
-	p:Encode1(t2)
-	p:Encode1(t3)
-	p:Encode1(bit32.band(t4,0xB))
-	p:Encode1(1)
+	
+	-- EncodeStr broken
+	for c in modelName:gmatch'.' do
+		p:Encode1(string.byte(c))
+	end
+	for i = #modelName, 15 do p:Encode1(0) end
+	
 	p:Encode4(0)
-	for i = 1, #champ do
-		p:Encode1(string.byte(champ:sub(i,i)))
-	end
-	for i = #champ + 1, 64 do
-		p:Encode1(0)
-	end
-	p:Hide()
+	p:Encode4(0)
+	p:Encode4(0xFF)
+	p:Encode4(0)
+	p:Encode4(0)
+	p:Encode1(0)
+	
 	RecvPacket(p)
 end
