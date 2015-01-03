@@ -1,4 +1,4 @@
-local version = "1.3"
+local version = "1.4"
 local TESTVERSION = false
 local AUTOUPDATE = true
 local UPDATE_HOST = "raw.github.com"
@@ -500,8 +500,12 @@ function VPrediction:CalculateTargetPosition(unit, delay, radius, speed, from, s
 	if t and self:isSlowed(unit, 0, math.huge, from) and not self:isSlowed(unit, t, math.huge, from) and Position then
 		CastPosition = Position
 	end]]
+	
 	if ValidTarget(unit) and unit.endPath or unit == myHero then  	----TEMP FIX
-		local pathPot = (unit.ms*((GetDistance(myHero.pos, unit.pos)/speed)+delay))
+		if GetDistance(unit, unit.endPath) < 65 then
+			return Vector(unit.endPath), 2, Vector(unit.endPath)
+		end
+		local pathPot = (unit.ms*((GetDistance(myHero.pos, unit.pos)/speed)+delay))*.99
 		if unit.pathCount < 3 then
 			local v = Vector(unit) + (Vector(unit.endPath)-Vector(unit)):normalized()*(pathPot)
 			if GetDistance(unit, v) > GetDistance(unit, unit.endPath) then
@@ -515,6 +519,7 @@ function VPrediction:CalculateTargetPosition(unit, delay, radius, speed, from, s
 			end
 			return Vector(unit), 2, Vector(unit)
 		else
+			pathPot = pathPot*.99
 			for i = unit.pathIndex, unit.pathCount do
 				if unit:GetPath(i) and unit:GetPath(i-1) then
 					local pStart, pEnd = unit:GetPath(i-1), unit:GetPath(i) 
@@ -535,9 +540,14 @@ function VPrediction:CalculateTargetPosition(unit, delay, radius, speed, from, s
 					end
 				end
 			end
-			pathPot = (unit.ms*((GetDistance(myHero.pos, unit.pos)/speed)+delay))
+			pathPot = (unit.ms*((GetDistance(myHero.pos, unit.pos)/speed)+delay))*.99
 			local v = Vector(unit) + (Vector(unit.endPath)-Vector(unit)):normalized()*(pathPot)
-			return v, 0, v
+			if GetDistance(unit, v) > 1 then
+				return v, 0, v
+			else
+				return Vector(unit), 2, Vector(unit)
+			end
+			
 		end
 	end
 end
@@ -625,15 +635,14 @@ function VPrediction:WayPointAnalysis(unit, delay, radius, range, speed, from, s
 		CastPosition = Vector(unit.x, 0, unit.z)
 		Position = CastPosition
 	end
-
 	return CastPosition, HitChance, Position
 end
 
-function VPrediction:GetBestCastPosition(unit, delay, radius, range, speed, from, collision, spelltype)
+function VPrediction:GetBestCastPosition(unit, delay, radius, range, speed, from, collision, spelltype, dmg)
 	assert(unit, "VPrediction: Target can't be nil")
 	
-	range = range and range - 4 or math.huge
-	radius = radius == 0 and 1 or (radius + self:GetHitBox(unit)) - 4
+	range = range and range - 15 or math.huge
+	radius = radius == 0 and 1 or (radius + self:GetHitBox(unit)) - 4.5
 	speed = speed and speed or math.huge
 	from = from and from or Vector(myHero)
 	if from.networkID and from.networkID == myHero.networkID then
@@ -667,11 +676,14 @@ function VPrediction:GetBestCastPosition(unit, delay, radius, range, speed, from
 		elseif TargetImmobile then
 			Position, CastPosition = ImmobilePos, ImmobileCastPosition
 			HitChance = 4
+		elseif GetDistance(myHero, unit) < 250 then
+			Position, HitChance, CastPosition = self:CalculateTargetPosition(unit, delay*0.5, radius, speed*2, from, spelltype)
+			HitChance = 2
 		elseif not self.DontUseWayPoints then
 			CastPosition, HitChance, Position = self:CalculateTargetPosition(unit, delay, radius, speed, from, spelltype)
 		end
 	end
-
+	
 	--[[Out of range]]
 	if IsFromMyHero then
 		if (spelltype == "line" and GetDistanceSqr(from, Position) >= range * range) then
@@ -695,7 +707,13 @@ function VPrediction:GetBestCastPosition(unit, delay, radius, range, speed, from
 	end
 
 	radius = radius - self:GetHitBox(unit) + 4
-
+	
+	if not Position or not CastPosition then
+		HitChance = 0
+		CastPosition = Vector(unit)
+		Position = CastPosition
+	end
+	
 	if collision and HitChance > 0 then
 		self.EnemyMinions.range = range + 500 * (delay + range/speed)
 		self.JungleMinions.range = self.EnemyMinions.range
@@ -704,16 +722,15 @@ function VPrediction:GetBestCastPosition(unit, delay, radius, range, speed, from
 		self.JungleMinions:update()
 		self.OtherMinions:update()
 
-		if collision and _G.VPredictionMenu.Collision.UnitPos and self:CheckMinionCollision(unit, unit, delay, radius, range, speed, from) then
+		if collision and _G.VPredictionMenu.Collision.CastPos and self:CheckMinionCollision(unit, CastPosition, delay, radius, range, speed, from, false, false, dmg) then
 			HitChance = -1
-		elseif _G.VPredictionMenu.Collision.PredictPos and self:CheckMinionCollision(unit, Position, delay, radius, range, speed, from) then
+		elseif _G.VPredictionMenu.Collision.PredictPos and self:CheckMinionCollision(unit, Position, delay, radius, range, speed, from, false, false, dmg) then
 			HitChance = -1
-		elseif _G.VPredictionMenu.Collision.CastPos and self:CheckMinionCollision(unit, CastPosition, delay, radius, range, speed, from) then
+		elseif _G.VPredictionMenu.Collision.UnitPos and self:CheckMinionCollision(unit, unit, delay, radius, range, speed, from, false, false, dmg) then
 			HitChance = -1
 		end
 	end
-	
-	
+
 	return CastPosition, HitChance, Position
 end
 
@@ -791,12 +808,12 @@ function VPrediction:CollisionProcessSpell(unit, spell)
 	end
 end
 
-function VPrediction:CheckCol(unit, minion, Position, delay, radius, range, speed, from, draw)
+function VPrediction:CheckCol(unit, minion, Position, delay, radius, range, speed, from, draw, dmg)
 	if unit.networkID == minion.networkID then 
 		return false
 	end
 	--[[Check first if the minion is going to be dead when skillshots reaches his position]]
-	if minion.type ~= myHero.type and _G.VPredictionMenu.Collision.CHealth and self:GetPredictedHealth(minion,  delay  + GetDistance(from, minion) / speed - GetLatency()/1000) < 0 then
+	if minion.type ~= myHero.type and _G.VPredictionMenu.Collision.CHealth and self:GetPredictedHealth(minion,  delay  + GetDistance(from, minion) / speed - GetLatency()/1000) < (dmg and dmg or 0) then
 		return false
 	end
 
@@ -830,7 +847,7 @@ function VPrediction:CheckCol(unit, minion, Position, delay, radius, range, spee
 	return false
 end
 
-function VPrediction:CheckMinionCollision(unit, Position, delay, radius, range, speed, from, draw, updatemanagers)
+function VPrediction:CheckMinionCollision(unit, Position, delay, radius, range, speed, from, draw, updatemanagers, dmg)
 	Position = Vector(Position)
 	from = from and Vector(from) or myHero
 	
@@ -846,7 +863,7 @@ function VPrediction:CheckMinionCollision(unit, Position, delay, radius, range, 
 	local result = false
 	if _G.VPredictionMenu.Collision.Minions then
 		for i, minion in ipairs(self.EnemyMinions.objects) do
-			if self:CheckCol(unit, minion, Position, delay, radius, range, speed, from, draw) then
+			if self:CheckCol(unit, minion, Position, delay, radius, range, speed, from, draw, dmg) then
 				if not draw then
 					return true
 				else
@@ -858,7 +875,7 @@ function VPrediction:CheckMinionCollision(unit, Position, delay, radius, range, 
 	
 	if _G.VPredictionMenu.Collision.Mobs then
 		for i, minion in ipairs(self.JungleMinions.objects) do
-			if self:CheckCol(unit, minion, Position, delay, radius, range, speed, from, draw) then
+			if self:CheckCol(unit, minion, Position, delay, radius, range, speed, from, draw, dmg) then
 				if not draw then
 					return true
 				else
@@ -870,7 +887,7 @@ function VPrediction:CheckMinionCollision(unit, Position, delay, radius, range, 
 
 	if _G.VPredictionMenu.Collision.Others then
 		for i, minion in ipairs(self.OtherMinions.objects) do
-			if minion.team ~= myHero.team and self:CheckCol(unit, minion, Position, delay, radius, range, speed, from, draw) then
+			if minion.team ~= myHero.team and self:CheckCol(unit, minion, Position, delay, radius, range, speed, from, draw, dmg) then
 				if not draw then
 					return true
 				else
@@ -882,7 +899,7 @@ function VPrediction:CheckMinionCollision(unit, Position, delay, radius, range, 
 
 	if self.ChampionCollision then
 		for i, enemy in ipairs(GetEnemyHeroes()) do
-			if self:CheckCol(unit, enemy, Position, delay, radius, range, speed, from, draw) then
+			if self:CheckCol(unit, enemy, Position, delay, radius, range, speed, from, draw, dmg) then
 				if not draw then
 					return true
 				else
@@ -915,9 +932,10 @@ end
 function VPrediction:GetCircularCastPosition(unit, delay, radius, range, speed, from, collision)
 	return self:GetBestCastPosition(unit, delay, radius, range, speed, from, collision, "circular")
 end
-
-function VPrediction:GetLineCastPosition(unit, delay, radius, range, speed, from, collision)
-	return self:GetBestCastPosition(unit, delay, radius, range, speed, from, collision, "line")
+													
+				--Added dmg param to increase minimum health predicted on collision if desired for champs such as Kalista Q; Or to increase buffer on predicted health by doing negative
+function VPrediction:GetLineCastPosition(unit, delay, radius, range, speed, from, collision, dmg)
+	return self:GetBestCastPosition(unit, delay, radius, range, speed, from, collision, "line", dmg)
 end
 
 function VPrediction:GetPredictedPos(unit, delay, speed, from, collision)
