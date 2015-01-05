@@ -1,4 +1,4 @@
-local version = "1.4"
+local version = "2.7"
 local TESTVERSION = false
 local AUTOUPDATE = true
 local UPDATE_HOST = "raw.github.com"
@@ -445,108 +445,50 @@ end
 
 --[[Calculate the hero position based on the last waypoints]]
 function VPrediction:CalculateTargetPosition(unit, delay, radius, speed, from, spelltype)
-	--[[local Waypoints = {}
-	local Position, CastPosition = Vector(unit), Vector(unit)
-	local t
-
-	Waypoints = self:GetCurrentWayPoints(unit)
-	local Waypointslength = self:GetWaypointsLength(Waypoints)
-
-	if #Waypoints == 1 then
-		Position, CastPosition = Vector(Waypoints[1].x, 0, Waypoints[1].y), Vector(Waypoints[1].x, 0, Waypoints[1].y)
-		return Position, CastPosition
-	elseif (Waypointslength - delay * unit.ms + radius) >= 0 then
-		local tA = 0
-		Waypoints = self:CutWaypoints(Waypoints, delay * unit.ms - radius)
-
-		if speed ~= math.huge then
-			for i = 1, #Waypoints - 1 do
-				local A, B = Waypoints[i], Waypoints[i+1]
-				if i == #Waypoints - 1 then
-					B = Vector(B) + radius * Vector(B - A):normalized()
-				end
-				local t1, p1, t2, p2, D = VectorMovementCollision(A, B, unit.ms, Vector(from.x, from.z), speed)
-				local tB = tA + D / unit.ms
-				t1, t2 = (t1 and tA <= t1 and t1 <= (tB - tA)) and t1 or nil, (t2 and tA <= t2 and t2 <= (tB - tA)) and t2 or nil
-				t = t1 and t2 and math.min(t1, t2) or t1 or t2
-				if t then
-					CastPosition = t==t1 and Vector(p1.x, 0, p1.y) or Vector(p2.x, 0, p2.y)
-					break
-				end
-				tA = tB
-			end
-		else
-			t = 0
-			CastPosition = Vector(Waypoints[1].x, 0, Waypoints[1].y)
-		end
-
-		if t then
-			if (self:GetWaypointsLength(Waypoints) - t * unit.ms - radius) >= 0 then
-				Waypoints = self:CutWaypoints(Waypoints, radius + t * unit.ms)
-				Position = Vector(Waypoints[1].x, 0, Waypoints[1].y)
-			else
-				Position = CastPosition
-			end
-		elseif unit.type ~= myHero.type then
-			CastPosition = Vector(Waypoints[#Waypoints].x, 0, Waypoints[#Waypoints].y)
-			Position = CastPosition
-		end
-
-	elseif unit.type ~= myHero.type then
-		CastPosition = Vector(Waypoints[#Waypoints].x, 0, Waypoints[#Waypoints].y)
-		Position = CastPosition
-	end
-
-	if t and self:isSlowed(unit, 0, math.huge, from) and not self:isSlowed(unit, t, math.huge, from) and Position then
-		CastPosition = Position
-	end]]
 	
 	if ValidTarget(unit) and unit.endPath or unit == myHero then  	----TEMP FIX
-		if GetDistance(unit, unit.endPath) < 65 then
+		if GetDistance(unit, unit.endPath) < 125 then
 			return Vector(unit.endPath), 2, Vector(unit.endPath)
 		end
 		local pathPot = (unit.ms*((GetDistance(myHero.pos, unit.pos)/speed)+delay))*.99
 		if unit.pathCount < 3 then
 			local v = Vector(unit) + (Vector(unit.endPath)-Vector(unit)):normalized()*(pathPot)
 			if GetDistance(unit, v) > GetDistance(unit, unit.endPath) then
-				return v, 0, v
+				return Vector(unit.endPath), 1, Vector(unit.endPath)
 			elseif GetDistance(unit, v) > 1 then
 				if GetDistance(unit.endPath, unit) > GetDistance(unit, v) then
 					return v, 2, v
 				else
-					return v, 0, v
+					return v, 1, v
 				end
 			end
-			return Vector(unit), 2, Vector(unit)
+			return Vector(unit.endPath), 1, Vector(unit.endPath)
 		else
 			pathPot = pathPot*.99
 			for i = unit.pathIndex, unit.pathCount do
 				if unit:GetPath(i) and unit:GetPath(i-1) then
-					local pStart, pEnd = unit:GetPath(i-1), unit:GetPath(i) 
+					local pStart = i == unit.pathIndex and unit.pos or unit:GetPath(i-1)
+					local pEnd = unit:GetPath(i) 
 					local iPathDist = GetDistance(pStart, pEnd) 
 					if unit:GetPath(unit.pathIndex  - 1) then
 						if pathPot > iPathDist then
 							pathPot = pathPot-iPathDist
-						elseif (pathPot + GetDistance(unit, unit:GetPath(unit.pathIndex  - 1))) > iPathDist then
-							pathPot = (pathPot + GetDistance(unit, unit:GetPath(unit.pathIndex  - 1))) - iPathDist
+						
 						else 
 							if pathPot < iPathDist then
-								local v = Vector(pStart) + (Vector(pEnd)-Vector(pStart)):normalized()*(pathPot + GetDistance(unit, unit:GetPath(unit.pathIndex  - 1)))
+								local v = Vector(pStart) + (Vector(pEnd)-Vector(pStart)):normalized()*(pathPot)
 								return v, 2, v
 							else
-								return v, 0, v
+								return v, 1, v
 							end
 						end
 					end
 				end
 			end
-			pathPot = (unit.ms*((GetDistance(myHero.pos, unit.pos)/speed)+delay))*.99
-			local v = Vector(unit) + (Vector(unit.endPath)-Vector(unit)):normalized()*(pathPot)
-			if GetDistance(unit, v) > 1 then
-				return v, 0, v
-			else
-				return Vector(unit), 2, Vector(unit)
-			end
+			
+			
+				return Vector(unit.endPath), 1, Vector(unit.endPath)
+			
 			
 		end
 	end
@@ -638,11 +580,11 @@ function VPrediction:WayPointAnalysis(unit, delay, radius, range, speed, from, s
 	return CastPosition, HitChance, Position
 end
 
-function VPrediction:GetBestCastPosition(unit, delay, radius, range, speed, from, collision, spelltype, dmg)
+function VPrediction:GetBestCastPosition(unit, delay, radius, range, speed, from, collision, spelltype, dmg) --Temp Fix
 	assert(unit, "VPrediction: Target can't be nil")
 	
 	range = range and range - 15 or math.huge
-	radius = radius == 0 and 1 or (radius + self:GetHitBox(unit)) - 4.5
+	radius = radius == 0 and 1 or (radius + self:GetHitBox(unit)) - 4
 	speed = speed and speed or math.huge
 	from = from and from or Vector(myHero)
 	if from.networkID and from.networkID == myHero.networkID then
@@ -722,11 +664,12 @@ function VPrediction:GetBestCastPosition(unit, delay, radius, range, speed, from
 		self.JungleMinions:update()
 		self.OtherMinions:update()
 
-		if collision and _G.VPredictionMenu.Collision.CastPos and self:CheckMinionCollision(unit, CastPosition, delay, radius, range, speed, from, false, false, dmg) then
+		if _G.VPredictionMenu.Collision.CastPos and self:CheckMinionCollision(unit, CastPosition, delay, radius, range, speed, from, false, false, dmg) then
 			HitChance = -1
 		elseif _G.VPredictionMenu.Collision.PredictPos and self:CheckMinionCollision(unit, Position, delay, radius, range, speed, from, false, false, dmg) then
 			HitChance = -1
-		elseif _G.VPredictionMenu.Collision.UnitPos and self:CheckMinionCollision(unit, unit, delay, radius, range, speed, from, false, false, dmg) then
+		end
+		if _G.VPredictionMenu.Collision.UnitPos and self:CheckMinionCollision(unit, unit, delay, radius, range, speed, from, false, false, dmg) then
 			HitChance = -1
 		end
 	end
