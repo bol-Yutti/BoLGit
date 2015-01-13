@@ -1,4 +1,4 @@
-local version = "2.8"
+local version = "2.82"
 local TESTVERSION = false
 local AUTO_UPDATE = true
 local UPDATE_HOST = "raw.github.com"
@@ -452,7 +452,7 @@ end
 
 
 --[[Calculate the hero position based on the last waypoints]]
---[[function VPrediction:CalculateTargetPosition(unit, delay, radius, speed, from, spelltype)
+function VPrediction:CalculateTargetPosition(unit, delay, radius, speed, from, spelltype)
 	if ValidTarget(unit) and unit.endPath or unit == myHero then  	----TEMP FIX
 		local pathPot = (unit.ms*((GetDistance(myHero.pos, unit.pos)/speed)+delay))
 		
@@ -505,8 +505,8 @@ end
 		end
 	end
 	return Vector(unit), Vector(unit)
-end]]
-function VPrediction:CalculateTargetPosition(unit, delay, radius, speed, from, spelltype)
+end
+--[[function VPrediction:CalculateTargetPosition(unit, delay, radius, speed, from, spelltype)
 	local Waypoints = {}
 	local Position, CastPosition = Vector(unit), Vector(unit)
 	local t
@@ -562,7 +562,7 @@ function VPrediction:CalculateTargetPosition(unit, delay, radius, speed, from, s
 	end
 
 	return CastPosition, Position
-end
+end]]
 function VPrediction:MaxAngle(unit, currentwaypoint, from)
 	local WPtable, n = self:GetWaypoints(unit.networkID, from)
 	local Max = 0
