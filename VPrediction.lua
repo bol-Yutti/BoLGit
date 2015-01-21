@@ -1,4 +1,4 @@
-local version = "2.83"
+local version = "2.84"
 local TESTVERSION = false
 local AUTO_UPDATE = true
 local UPDATE_HOST = "raw.github.com"
@@ -489,14 +489,8 @@ function VPrediction:CalculateTargetPosition(unit, delay, radius, speed, from, s
 						if pathPot > iPathDist then
 							pathPot = pathPot-iPathDist
 						else 
-							if pathPot < iPathDist then
-								local v = Vector(pStart) + (Vector(pEnd)-Vector(pStart)):normalized()*(pathPot)
-						
-								return v,  v
-					
-							else
-								return v,  v
-							end
+							local v = Vector(pStart) + (Vector(pEnd)-Vector(pStart)):normalized()*(pathPot)
+							return v,  v
 						end
 					end
 				end
