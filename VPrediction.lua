@@ -1,4 +1,4 @@
-local version = "2.84"
+local version = "2.85"
 local TESTVERSION = false
 local AUTO_UPDATE = true
 local UPDATE_HOST = "raw.github.com"
@@ -196,14 +196,14 @@ end
 
 --[[Track when we lose or gain vision over an enemy]]
 function VPrediction:OnRecvPacket(p) --Credits to PewPewPew
-	if p.header == 0xCD then --losevision
+	if p.header == 0x8B then --losevision
 		p.pos=2
 		local o = objManager:GetObjectByNetworkId(p:DecodeF())
-		if o and o.type == myHero.type and not o.dead and o.team ~= myHero.team then
+		if o and o.type == myHero.type and o.team ~= myHero.team then
 			self.TargetsVisible[o.networkID] = math.huge
 		end	
 	end
-	if p.header == 0xFC then --gainvision
+	if p.header == 0xBD then --gainvision
 		p.pos=2
 		local o = objManager:GetObjectByNetworkId(p:DecodeF())
 		if o and o.type == myHero.type and o.team ~= myHero.team then
